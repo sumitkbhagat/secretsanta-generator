@@ -70,9 +70,7 @@ pipeline {
                        sh " docker stop santa || true"
                        sh " docker rm santa || true"
                        sh " docker rmi santa:latest  || true"
-                       
-                       
-                       sh "docker run -d -p 8500:8000 sumitkumarbhagat/santa:latest"
+                       sh "docker run -d -p 8081:8080 sumitkumarbhagat/santa:latest"
                       
                    
                  }
