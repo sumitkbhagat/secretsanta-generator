@@ -1,1 +1,84 @@
-
+pipeline {
+    agent any
+    tools{
+        jdk 'jdk-11'
+        maven 'maven3'
+    }
+   stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'master', changelog: false,  poll: false, url: 'https://github.com/sumitkbhagat/secretsanta-generator.git'
+            }
+        }
+        
+        stage('COMPILE') {
+            steps {
+                sh "mvn  compile"
+            }
+        }
+        
+         stage('Test') {
+            steps {
+                sh "mvn  test"
+            }
+        }
+        
+        
+        stage('OWASP Scan') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./ ', odcInstallation: 'DP'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        
+      
+        stage('Build Application') {
+            steps {
+                sh "mvn package "
+            }
+        }
+        
+        
+        
+        stage('Build Docker Image') {
+            steps {
+               script{
+                   withDockerRegistry(credentialsId: 'docker-cred',toolName: 'docker') {
+                       sh "docker build -t santa:latest ."
+                   
+                 }
+               }
+            }
+        }
+        
+        stage('Tag & Docker Image') {
+            steps {
+               script{
+                   withDockerRegistry(credentialsId: 'docker-cred',toolName: 'docker') {
+                       sh "docker tag santa:latest sumitkumarbhagat/santa:latest"
+                       sh "docker push sumitkumarbhagat/santa:latest"
+                   
+                 }
+               }
+            }
+        }
+        
+         stage('Deploy Application') {
+            steps {
+               script{
+                   withDockerRegistry(credentialsId: 'docker-cred',toolName: 'docker') {
+                       sh " docker stop santa || true"
+                       sh " docker rm santa || true"
+                       sh " docker rmi santa:latest  || true"
+                       
+                       
+                       sh "docker run -d -p 8500:8000 sumitkumarbhagat/santa:latest"
+                      
+                   
+                 }
+               }
+            }
+        }
+        
+    }
+}
